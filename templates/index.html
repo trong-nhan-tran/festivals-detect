@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image Prediction</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      /* body {
+        background-image: url("{{ url_for('static', filename='images/hue.jpeg') }}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        width: 100%;
+        height: 100vh;
+         */
+      /* } */
+      .blurred-content {
+        backdrop-filter: blur(5px);
+        background-color: rgba(255, 255, 255, 0.2); /* Optional: adds a white overlay with transparency */
+      }
+      .blur {
+        background-color: rgba(255, 255, 255, 0.3); /* Optional: adds a white overlay with transparency */
+
+      }
+
+      .text-color{
+        color: black;
+      }
+      .bg-color{
+        background-color: red;
+      }
+    </style>
+    <script>
+      function validateFileCount(input) {
+        const fileCount = input.files.length;
+        if (fileCount < 7 || fileCount > 10) {
+          alert("Vui lòng chọn từ 7 đến 10 ảnh.");
+          input.value = ""; // Reset the input
+        }
+      }
+    </script>
+  </head>
+  <body class="">
+    <div class="container mx-auto p-6">
+      <form method="post" enctype="multipart/form-data" class="shadow-lg rounded-lg p-8 mb-6 blur flex justify-between items-center">
+        <div class="flex flex-row justify-center space-x-4">
+          <image src="{{ url_for('static', filename='images/logo/flag-viet-nam-logo.jpg') }}" alt="Flag Vietnam Logo" class="w-16 h-10 items-center" />
+          <h2 class="text-4xl text-center text-indigo-600 text-color items-center">Nhận diện lễ hội Việt Nam</h2>
+        </div>
+        <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4">
+          <input
+            type="file"
+            name="images"
+            multiple
+            accept="image/*"
+            class="border border-gray-300 rounded-lg p-3 w-full md:w-auto shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            onchange="validateFileCount(this)"
+          />
+          <button type="submit" class="bg-color text-white px-6 py-2 rounded-lg w-full md:w-auto shadow-lg hover:border-2 hover:border-black ">
+            Dự đoán
+          </button>
+        </div>
+      </form>
+
+      {% if error %}
+      <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+        <p>{{ error }}</p>
+      </div>
+      {% endif %}
+
+      {% if predicted %}
+      <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-6 mb-6 rounded-lg shadow-lg flex" role="alert">
+        {% set festival_image = {
+          'Lễ hội Lồng Tồng': 'images/festivals/long-tong.jpg',
+          'Lễ hội Tháp Bà Ponagar': 'images/festivals/ponagar.jpg',
+          'Lễ hội Chùa Hương': 'images/festivals/chua-huong.jpg',
+          'Hội Lim': 'images/festivals/hoi-lim.jpg',
+          'Lễ hội Cổ Loa': 'images/festivals/co-loa.jpg',
+          'Lễ hội Ok Om Bok': 'images/festivals/ok-om-bok.jpg',
+          'Lễ hội đua voi Tây Nguyên': 'images/festivals/tay-nguyen.jpg',
+          'Lễ hội đua bò Bảy Núi': 'images/festivals/bay-nui.jpg',
+        }[message] %}
+        <img src="{{ url_for('static', filename=festival_image) }}" alt="Festival Image" class="w-80 h-auto mr-4" />
+        <div>
+          <h3 class="text-lg font-semibold text-2xl">Các hình ảnh bạn cung cấp có thể liên quan đến {{ message }}</h3>
+          {% if festival_info %}
+          <p class="mt-2 text-md italic text-color text-lg">{{ festival_info }}</p>
+          {% endif %}
+        </div>
+      </div>
+      {% elif message %}
+      
+      <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-6 mb-6 rounded-lg shadow-lg text-lg flex" role="alert">
+        <h3 class="text-lg font-semibold text-2xl">{{ message }}</h3>
+      </div>
+
+      {% endif %}
+
+      {% if conflict_images %}
+      <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+        <h4 class="text-center text-lg font-semibold">Các hình ảnh sau đây có xung đột:</h4>
+        <ul class="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center">
+          {% for img1, img2 in conflict_images %}
+          <li class="flex items-center space-x-4">
+            <img src="{{ img1 }}" alt="Conflict Image 1" class="w-48 h-auto rounded-lg" />
+            <span class="mx-2">và</span>
+            <img src="{{ img2 }}" alt="Conflict Image 2" class="w-48 h-auto rounded-lg" />
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% else %}
+      {% if results %}
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for img_data, labels in results %}
+        <div class="bg-white p-6 rounded-lg shadow-lg blur text-color">
+          <img src="{{ img_data }}" alt="Image" class="w-full h-auto mb-4 rounded-lg" />
+          <p class="mb-2">Hình ảnh có thể liên quan hoạt động sau:</p>
+          <ul class="space-y-2">
+            {% for label, prob in labels %}
+            <li>{{ label[1] }}: {{ prob|round(4) }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endif %}
+    </div>
+  </body>
+</html>
