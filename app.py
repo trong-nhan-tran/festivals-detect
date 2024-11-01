@@ -11,8 +11,6 @@ app = Flask(__name__)
 
 # Load the saved MobileNet model
 loaded_model = keras.models.load_model('./models/mobilenet-bs32-e20.h5')
-l = ['LongTong_NemCon', 'Ponagar_MuaCham', 'ChuaHuong_DongHuongTich', 'HoiLim_HatQuanHo', 'HoiLim_DanhDu', 'CoLoa_DanhCoNguoi', 'CoLoa_BanNo', 'OkOmBok_DuaGheNgo', 'TayNguyen_DuaVoi', 'BayNui_DuaBo', 'ChuaHuong_DiThuyen', 'LongTong_DiCaKheo', 'OkOmBok_ThaDenNuoc', 'OkOmBok_ThaDenTroi']
-
 
 activities = [
     ("Lễ hội Lồng Tồng","Trò chơi ném còn"), 

@@ -3,64 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Image Prediction</title>
+    <title>Dự đoán lễ hội Việt Nam</title>
     <link
       href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
       rel="stylesheet"
     />
-    <style>
-      /* body {
-        background-image: url("{{ url_for('static', filename='images/hue.jpeg') }}");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        width: 100%;
-        height: 100vh;
-         */
-      /* } */
-      .blurred-content {
-        backdrop-filter: blur(5px);
-        background-color: rgba(255, 255, 255, 0.2); /* Optional: adds a white overlay with transparency */
-      }
-      .blur {
-        background-color: rgba(255, 255, 255, 0.3); /* Optional: adds a white overlay with transparency */
-
-      }
-
-      .text-color{
-        color: black;
-      }
-      .bg-color{
-        background-color: red;
-      }
-    </style>
-    <script>
-      function validateFileCount(input) {
-        const fileCount = input.files.length;
-        if (fileCount < 7 || fileCount > 10) {
-          alert("Vui lòng chọn từ 7 đến 10 ảnh.");
-          input.value = ""; // Reset the input
-        }
-      }
-    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
   </head>
-  <body class="">
-    <div class="container mx-auto p-6">
-      <form method="post" enctype="multipart/form-data" class="shadow-lg rounded-lg p-8 mb-6 blur flex justify-between items-center">
-        <div class="flex flex-row justify-center space-x-4">
-          <image src="{{ url_for('static', filename='images/logo/flag-viet-nam-logo.jpg') }}" alt="Flag Vietnam Logo" class="w-16 h-10 items-center" />
-          <h2 class="text-4xl text-center text-indigo-600 text-color items-center">Nhận diện lễ hội Việt Nam</h2>
+  <body class="gray-color-bg">
+    <div class="p-6 lg:px-10">
+      <form method="post" enctype="multipart/form-data" class="white-color-bg w-full shadow-lg rounded-lg p-8 mb-6 flex flex-col lg:flex-row justify-between">
+        <div class="flex flex-row justify-center space-x-4 item-center">
+          <image src="{{ url_for('static', filename='images/logo/flag-viet-nam-logo.jpg') }}" alt="Flag Vietnam Logo" class="w-16 h-10 items-center rounded-md" />
+          <h3 class="text-4xl text-center text-indigo-600 text-color">Nhận diện lễ hội Việt Nam</h3>
         </div>
-        <div class="flex flex-col md:flex-row justify-center space-y-4 md:space-y-0 md:space-x-4">
-          <input
-            type="file"
-            name="images"
-            multiple
-            accept="image/*"
-            class="border border-gray-300 rounded-lg p-3 w-full md:w-auto shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-            onchange="validateFileCount(this)"
-          />
-          <button type="submit" class="bg-color text-white px-6 py-2 rounded-lg w-full md:w-auto shadow-lg hover:border-2 hover:border-black ">
+        <div class="flex flex-col lg:flex-row justify-center mt-5 lg:mt-0 space-y-4 space-x-0 lg:space-y-0 lg:space-x-4">
+          <label class="flex flex-col items-center w-full md:w-auto cursor-pointer">
+            <span id="file-count" class="bg-gray-200 text-gray-700 p-3 rounded-lg shadow-md w-full text-center transition duration-200 hover:bg-gray-300">
+              Chọn hình ảnh
+            </span>
+            <input
+              type="file"
+              name="images"
+              multiple
+              accept="image/*"
+              class="hidden"
+              onchange="validateFileCount(this); updateFileCount(this)"
+            />
+          </label>
+        
+          <button type="submit" class="bg-color text-yellow-200 lg:px-6 p-3 rounded-lg w-full md:w-auto shadow-lg hover:border-2 hover:border-black ">
             Dự đoán
           </button>
         </div>
@@ -73,7 +45,7 @@
       {% endif %}
 
       {% if predicted %}
-      <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-6 mb-6 rounded-lg shadow-lg flex" role="alert">
+      <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-6 mb-6 rounded-lg shadow-lg flex flex-col lg:flex-row" role="alert">
         {% set festival_image = {
           'Lễ hội Lồng Tồng': 'images/festivals/long-tong.jpg',
           'Lễ hội Tháp Bà Ponagar': 'images/festivals/ponagar.jpg',
@@ -84,7 +56,7 @@
           'Lễ hội đua voi Tây Nguyên': 'images/festivals/tay-nguyen.jpg',
           'Lễ hội đua bò Bảy Núi': 'images/festivals/bay-nui.jpg',
         }[message] %}
-        <img src="{{ url_for('static', filename=festival_image) }}" alt="Festival Image" class="w-80 h-auto mr-4" />
+        <img src="{{ url_for('static', filename=festival_image) }}" alt="Festival Image" class="w-full lg:w-80 h-auto mr-4 rounded-xl" />
         <div>
           <h3 class="text-lg font-semibold text-2xl">Các hình ảnh bạn cung cấp có thể liên quan đến {{ message }}</h3>
           {% if festival_info %}
@@ -115,9 +87,9 @@
       </div>
       {% else %}
       {% if results %}
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="gray-color-bg grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {% for img_data, labels in results %}
-        <div class="bg-white p-6 rounded-lg shadow-lg blur text-color">
+        <div class="white-color-bg p-6 rounded-lg shadow-lg blur text-color">
           <img src="{{ img_data }}" alt="Image" class="w-full h-auto mb-4 rounded-lg" />
           <p class="mb-2">Hình ảnh có thể liên quan hoạt động sau:</p>
           <ul class="space-y-2">
@@ -131,5 +103,8 @@
       {% endif %}
       {% endif %}
     </div>
+        
+    
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
   </body>
 </html>
