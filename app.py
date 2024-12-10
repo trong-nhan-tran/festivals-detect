@@ -6,11 +6,12 @@ from tensorflow import keras
 import base64
 import requests
 import json
-
+from scenedetect import VideoManager, SceneManager
+from scenedetect.detectors import ContentDetector
 app = Flask(__name__)
 
 # Load the saved MobileNet model
-loaded_model = keras.models.load_model('./models/mobilenet-bs32-e20.h5')
+loaded_model = keras.models.load_model('./models/mobilenet-bs32-e20_old.h5')
 
 activities = [
     ("Lễ hội Lồng Tồng","Trò chơi ném còn"), 
@@ -28,7 +29,13 @@ activities = [
     ("Lễ hội Ok Om Bok","Hoạt động thả đèn nước"), 
     ("Lễ hội Ok Om Bok","Hoạt động thả đèn trời"), 
 ]
-
+activities1 = [
+    "Trò chơi ném còn", "Biểu diễn múa Chăm", "Tham quan động Hương Tích", 
+    "Hát Quan Họ", "Trò chơi đánh đu", "Đánh cờ người", "Trò chơi bắn nỏ",
+    "Đua ghe ngo", "Hoạt động đua voi", "Hoạt động đua bò", 
+    "Đi thuyền trên sông", "Trò chơi đi cà kheo", 
+    "Hoạt động thả đèn nước", "Hoạt động thả đèn trời"
+]
 conflict_pairs = [
     ("Trò chơi ném còn", "Đi thuyền trên sông"),
     ("Trò chơi ném còn", "Đua ghe ngo"),
@@ -63,8 +70,62 @@ conflict_pairs = [
     ("Tham quan động Hương Tích", "Thả đèn nước"),
 
 ]
+
 HEIGHT = 128
 WIDTH = 128
+def detect_scenes(video_path):
+    video_manager = VideoManager([video_path])
+    scene_manager = SceneManager()
+    scene_manager.add_detector(ContentDetector(threshold=20.0))
+    video_manager.set_downscale_factor()
+    
+    video_manager.start()
+    scene_manager.detect_scenes(video_manager)
+    scenes = scene_manager.get_scene_list()
+    video_manager.release()
+    
+    return [(start.get_seconds(), end.get_seconds()) for start, end in scenes]
+
+def predict_activity(frame):
+    processed_frame = resize_image(frame, max(WIDTH, HEIGHT))
+    processed_frame = np.array(processed_frame, dtype="float") / 255.0
+    processed_frame = np.expand_dims(processed_frame, axis=0)  # Add batch dimension
+    predictions = loaded_model.predict(processed_frame)[0]
+    top_index = np.argmax(predictions)
+    return activities1[top_index], predictions[top_index]
+
+def process_video(video_file):
+    # Detect scenes
+    scenes = detect_scenes(video_file)
+    cap = cv2.VideoCapture(video_file)
+    
+    results = []
+    for start_sec, end_sec in scenes:
+        cap.set(cv2.CAP_PROP_POS_MSEC, (start_sec + end_sec) / 2 * 1000)  # Get frame in the middle of the scene
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        activity, confidence = predict_activity(frame)
+        results.append((start_sec, end_sec, activity, confidence))
+    
+    cap.release()
+    return results
+
+# Generate SRT file
+def generate_srt_file(results, srt_file):
+    with open(srt_file, 'w') as f:
+        for i, (start_sec, end_sec, activity, confidence) in enumerate(results, start=1):
+            start_time = format_time(start_sec)
+            end_time = format_time(end_sec)
+            subtitle_text = f"Activity: {activity} (Confidence: {confidence:.2f})"
+            f.write(f"{i}\n{start_time} --> {end_time}\n{subtitle_text}\n\n")
+
+def format_time(seconds):
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    seconds = int(seconds % 60)
+    milliseconds = int((seconds - int(seconds)) * 1000)
+    return f"{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}"
 
 def resize_image(image, target_size):
     h, w = image.shape[:2]
@@ -108,7 +169,7 @@ def determine_most_likely_festival(festival_counts, threshold=2):
     
     if len(sorted_festivals) > 1 and (sorted_festivals[0][1] - sorted_festivals[1][1]) >= threshold:
         return sorted_festivals[0][0]
-    return False
+    return None
 
 # Load festival data from JSON file
 with open('./static/json/festivals.json', 'r', encoding='utf-8') as f:
@@ -152,9 +213,16 @@ def index():
                 # Store the top activity for conflict checking
                 top_activities.append(top_2_labels[0][0][1])
 
+                # # Count festivals
+                # for label, _ in top_2_labels:
+                #     festival_counts[label[0]] += 1
                 # Count festivals
-                for label, _ in top_2_labels:
-                    festival_counts[label[0]] += 1
+                top_1_label, top_1_prob = top_2_labels[0]  # Lấy top 1
+                festival_counts[top_1_label[0]] += 1  # Đếm top 1
+
+                # Chỉ đếm top 2 nếu tỉ lệ lớn hơn 0.1
+                if top_2_labels[1][1] > 0.1:
+                    festival_counts[top_2_labels[1][0][0]] += 1
 
                 results.append((img_data, top_2_labels))
 
@@ -187,6 +255,45 @@ def index():
                 )
 
     return render_template('index.html')
+
+@app.route('/video', methods=['POST'])
+def process_video_upload():
+    if 'video' not in request.files:
+        return render_template('index.html', error="Vui lòng tải lên một video.")
+
+    video_file = request.files['video']
+    if video_file:
+        # Ensure the uploads directory exists
+        uploads_dir = './static/uploads'
+        if not os.path.exists(uploads_dir):
+            os.makedirs(uploads_dir)
+
+        video_path = os.path.join(uploads_dir, video_file.filename)
+        video_file.save(video_path)
+
+        # Process the video and generate subtitles
+        results = process_video(video_path)
+        vtt_file = os.path.splitext(video_path)[0] + '.vtt'
+        generate_vtt_file(results, vtt_file)
+
+        # Use url_for to generate the correct paths for the video and subtitle files
+        return render_template(
+            'index.html',
+            video_url=video_file.filename,  # Just the filename
+            vtt_url=os.path.basename(vtt_file),  # Just the filename
+            video_uploaded=True
+        )
+
+    return render_template('index.html', error="Đã xảy ra lỗi khi tải lên video.")
+
+def generate_vtt_file(results, vtt_file):
+    with open(vtt_file, 'w') as f:
+        f.write("WEBVTT\n\n")  # Write the WebVTT header
+        for i, (start_sec, end_sec, activity, confidence) in enumerate(results, start=1):
+            start_time = format_time(start_sec)
+            end_time = format_time(end_sec)
+            subtitle_text = f"Activity: {activity} (Confidence: {confidence:.2f})"
+            f.write(f"{start_time} --> {end_time}\n{subtitle_text}\n\n")
 
 if __name__ == '__main__':
     app.run(debug=True)
