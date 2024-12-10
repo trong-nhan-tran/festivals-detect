@@ -86,39 +86,31 @@ def detect_scenes(video_path):
     
     return [(start.get_seconds(), end.get_seconds()) for start, end in scenes]
 
-def predict_activity(frame):
-    processed_frame = resize_image(frame, max(WIDTH, HEIGHT))
-    processed_frame = np.array(processed_frame, dtype="float") / 255.0
-    processed_frame = np.expand_dims(processed_frame, axis=0)  # Add batch dimension
-    predictions = loaded_model.predict(processed_frame)[0]
-    top_index = np.argmax(predictions)
-    return activities1[top_index], predictions[top_index]
-
 def process_video(video_file):
     # Detect scenes
     scenes = detect_scenes(video_file)
     cap = cv2.VideoCapture(video_file)
     
-    results = []
+    results_subtitle = []
+    festival_counts = {activity[0]: 0 for activity in activities}  # Initialize festival counts
+
     for start_sec, end_sec in scenes:
         cap.set(cv2.CAP_PROP_POS_MSEC, (start_sec + end_sec) / 2 * 1000)  # Get frame in the middle of the scene
         ret, frame = cap.read()
         if not ret:
             continue
-        activity, confidence = predict_activity(frame)
-        results.append((start_sec, end_sec, activity, confidence))
-    
-    cap.release()
-    return results
+        
+        # Use predict_image to get the top activity
+        predictions = predict_image(frame)
+        top_index = np.argmax(predictions)
+        top_activity = activities[top_index][1]
+        top_festivals = activities[top_index][0]  # Get the festival name
+        results_subtitle.append((start_sec, end_sec, top_activity, predictions[top_index]))
+        festival_counts[top_festivals] += 1  # Count the detected activity
 
-# Generate SRT file
-def generate_srt_file(results, srt_file):
-    with open(srt_file, 'w') as f:
-        for i, (start_sec, end_sec, activity, confidence) in enumerate(results, start=1):
-            start_time = format_time(start_sec)
-            end_time = format_time(end_sec)
-            subtitle_text = f"Activity: {activity} (Confidence: {confidence:.2f})"
-            f.write(f"{i}\n{start_time} --> {end_time}\n{subtitle_text}\n\n")
+    cap.release()
+    return results_subtitle, festival_counts
+
 
 def format_time(seconds):
     hours = int(seconds // 3600)
@@ -272,17 +264,29 @@ def process_video_upload():
         video_file.save(video_path)
 
         # Process the video and generate subtitles
-        results = process_video(video_path)
+        results_subtitle, festival_counts = process_video(video_path)
         vtt_file = os.path.splitext(video_path)[0] + '.vtt'
-        generate_vtt_file(results, vtt_file)
+        generate_vtt_file(results_subtitle, vtt_file)
 
-        # Use url_for to generate the correct paths for the video and subtitle files
-        return render_template(
-            'index.html',
-            video_url=video_file.filename,  # Just the filename
-            vtt_url=os.path.basename(vtt_file),  # Just the filename
-            video_uploaded=True
-        )
+        # Determine the most likely festival
+        most_likely_festival = determine_most_likely_festival(festival_counts, threshold=2)
+        festival_info = None
+        if most_likely_festival:
+            festival_info = get_festival_info(most_likely_festival)
+            return render_template(
+                'index.html',  
+                video_url=video_file.filename,  # Just the filename
+                vtt_url=os.path.basename(vtt_file),  # Just the filename
+                video_uploaded=True,
+                message=f"{most_likely_festival}", festival_info=festival_info,
+                predicted = True
+            )
+        
+        else:
+            return render_template(
+                'index.html', 
+                message="Không thể kết luận các Video bạn cung cấp liên quan đến lễ hội nào vì kết quả dự đoán chưa chiếm số đông bởi bên nào"
+            )
 
     return render_template('index.html', error="Đã xảy ra lỗi khi tải lên video.")
 
@@ -292,7 +296,7 @@ def generate_vtt_file(results, vtt_file):
         for i, (start_sec, end_sec, activity, confidence) in enumerate(results, start=1):
             start_time = format_time(start_sec)
             end_time = format_time(end_sec)
-            subtitle_text = f"Activity: {activity} (Confidence: {confidence:.2f})"
+            subtitle_text = f"HĐ: {activity} (Độ tin cậy: {confidence:.2f})"
             f.write(f"{start_time} --> {end_time}\n{subtitle_text}\n\n")
 
 if __name__ == '__main__':
