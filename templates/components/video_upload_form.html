@@ -1,0 +1,38 @@
+{% macro video_upload_form() %}
+<form
+  method="post"
+  action="/video"
+  enctype="multipart/form-data"
+  class="shadow-lg rounded-lg p-8 mb-6 flex flex-col lg:flex-row justify-between"
+  onsubmit="showSpinner()"
+>
+  <div class="flex flex-row justify-center space-x-4 item-center">
+    <image
+      src="{{ url_for('static', filename='images/icon/video.png') }}"
+      alt="Flag Vietnam Logo"
+      class="w-12 items-center rounded-md"
+    />
+    <h3 class="text-4xl text-center text-indigo-600 text-color">
+      Nhận diện Video
+    </h3>
+  </div>
+  <div
+    class="flex flex-col lg:flex-row justify-center mt-5 lg:mt-0 space-y-4 space-x-0 lg:space-y-0 lg:space-x-4"
+  >
+    <label class="flex flex-col items-center w-full md:w-auto cursor-pointer">
+      <span
+        class="bg-gray-200 text-gray-700 p-3 rounded-lg shadow-md w-full text-center transition duration-200 hover:bg-gray-300"
+      >
+        Chọn video
+      </span>
+      <input type="file" name="video" accept="video/*" class="hidden" />
+    </label>
+    <button
+      type="submit"
+      class="bg-color text-yellow-200 lg:px-6 p-3 rounded-lg w-full md:w-auto shadow-lg hover:border-2 hover:border-black"
+    >
+      Dự đoán video
+    </button>
+  </div>
+</form>
+{% endmacro %}

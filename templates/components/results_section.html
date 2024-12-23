@@ -1,0 +1,120 @@
+{% macro results_section(server_return, predicted, message, festival_info,
+conflict_images, results_images, error, video_uploaded, video_url, vtt_url) %}
+{% if server_return %}
+<div class="p-12 m-12 border border-black rounded-3xl">
+  <div class="flex flex-row justify-center space-x-4 item-center mb-4">
+    <image
+      src="{{ url_for('static', filename='images/icon/predictive.png') }}"
+      class="w-12 items-center"
+    />
+    <h3 class="text-4xl text-center text-indigo-600 text-color font-bold">
+      KẾT QUẢ DỰ ĐOÁN
+    </h3>
+  </div>
+
+  {% if predicted %}
+  <div
+    class="bg-green-100 border-l-4 border-green-500 text-green-700 p-6 mb-6 rounded-lg shadow-lg flex flex-col lg:flex-row"
+    role="alert"
+  >
+    {% set festival_image = { 
+    'Lễ hội đua bò Bảy Núi':'images/festivals/bay-nui.jpg', 
+    'Lễ hội Chùa Hương':'images/festivals/chua-huong.jpg', 
+    'Lễ hội Cổ Loa':'images/festivals/co-loa.jpg', 
+    'Hội Lim':'images/festivals/hoi-lim.jpeg', 
+    'Lễ hội Lồng Tồng':'images/festivals/long-tong.jpg', 
+    'Lễ hội Ok Om Bok':'images/festivals/ok-om-bok.jpg', 
+    'Lễ hội Tháp Bà Ponagar':'images/festivals/ponagar.jpg', 
+    'Lễ hội đua voi Tây Nguyên':'images/festivals/tay-nguyen.jpg' 
+    }[message] %}
+    <img
+      src="{{ url_for('static', filename=festival_image) }}"
+      alt="Festival Image"
+      class="w-full lg:w-80 h-auto mr-4 rounded-xl"
+    />
+    <div>
+      <h3 class="text-lg font-semibold text-2xl">
+        Các hình ảnh bạn cung cấp có thể liên quan đến {{ message }}
+      </h3>
+      {% if festival_info %}
+      <p class="mt-2 text-md italic text-color text-lg">{{ festival_info }}</p>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %} {% if predicted == false %}
+  <div
+    class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-6 mb-6 rounded-lg shadow-lg text-lg flex"
+    role="alert"
+  >
+    <h3 class="text-lg font-semibold text-2xl">{{ message }}</h3>
+  </div>
+  {% endif %} {% if predicted == false and conflict_images %}
+  <div
+    class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6"
+    role="alert"
+  >
+    <h2 class="text-center text-2xl font-semibold mb-16">
+      Các hình ảnh sau đây có xung đột:
+    </h2>
+    <ul class="grid grid-cols-1 sm:grid-cols-2 gap-4 justify-items-center">
+      {% for img1, img2 in conflict_images %}
+      <li class="flex items-center space-x-4">
+        <img
+          src="{{ img1 }}"
+          alt="Conflict Image 1"
+          class="w-48 h-auto rounded-lg"
+        />
+        <span class="mx-2">và</span>
+        <img
+          src="{{ img2 }}"
+          alt="Conflict Image 2"
+          class="w-48 h-auto rounded-lg"
+        />
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %} {% if results_images %}
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+    {% for img_data, labels in results_images %}
+    <div class="white-color-bg p-6 rounded-lg shadow-lg blur text-color">
+      <img
+        src="{{ img_data }}"
+        alt="Image"
+        class="w-full h-auto mb-4 rounded-lg"
+      />
+      <p class="mb-2">Ảnh có thể là 2 hoạt động sau:</p>
+      <ul class="space-y-2">
+        {% for label, prob in labels %}
+        <li>{{ label[1] }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %} {% if error %}
+  <div
+    class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6"
+    role="alert"
+  >
+    <p>{{ error }}</p>
+  </div>
+  {% endif %} {% if video_uploaded %}
+  <div class="mt-6">
+    <video controls class="max-w-full mx-auto">
+      <source
+        src="{{ url_for('static', filename='uploads/' ~ video_url) }}"
+        type="video/mp4"
+      />
+      <track
+        src="{{ url_for('static', filename='uploads/' ~ vtt_url) }}"
+        kind="subtitles"
+        srclang="vi"
+        label="Vietnamese"
+      />
+      Trình duyệt của bạn không hỗ trợ video tag.
+    </video>
+  </div>
+  {% endif %}
+</div>
+{% endif %} {% endmacro %}

@@ -1,7 +1,7 @@
 function validateFileCount(input) {
   const fileCount = input.files.length;
-  if (fileCount < 7 || fileCount > 10) {
-    alert("Vui lòng chọn từ 7 đến 10 ảnh.");
+  if (fileCount < 1 || fileCount > 10) {
+    alert("Vui lòng chọn từ 1 đến 10 ảnh.");
     input.value = ""; // Reset the input
   }
 }
@@ -9,7 +9,7 @@ function validateFileCount(input) {
 function updateFileCount(input) {
   const fileCount = input.files.length;
   document.getElementById("file-count").textContent =
-    "Chọn hình ảnh (" + fileCount + ")";
+    "Chọn ảnh (" + fileCount + ")";
   sessionStorage.setItem("fileCount", fileCount); // Store file count
 }
 
@@ -21,3 +21,6 @@ document.addEventListener("DOMContentLoaded", function () {
       "Chọn hình ảnh (" + storedFileCount + ")";
   }
 });
+function showSpinner() {
+  document.getElementById("loading-spinner").style.display = "block"; // Show the spinner
+}

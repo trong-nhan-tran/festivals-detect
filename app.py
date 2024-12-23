@@ -156,7 +156,7 @@ def detect_conflict(top_activities, conflict_pairs):
                 conflicts.append((i, j))
     return conflicts
 
-def determine_most_likely_festival(festival_counts, threshold=2):
+def determine_most_likely_festival(festival_counts, threshold=0):
     sorted_festivals = sorted(festival_counts.items(), key=lambda x: x[1], reverse=True)
     
     if len(sorted_festivals) > 1 and (sorted_festivals[0][1] - sorted_festivals[1][1]) >= threshold:
@@ -176,10 +176,10 @@ def index():
     if request.method == 'POST':
         files = request.files.getlist('images')
         file_count = len(files)
-        if file_count < 7 or file_count > 10:
-            return render_template('index.html', error="Để nhận diện chính xác hơn vui lòng tải lên từ 7 đến 10 ảnh.")
+        if file_count < 1 or file_count > 10:
+            return render_template('index.html', error="Để nhận diện chính xác hơn vui lòng tải lên từ 1 đến 10 ảnh.")
         
-        results = []
+        results_images = []
         festival_counts = {}
         for activity in activities:
             festival_counts[activity[0]] = 0
@@ -205,9 +205,6 @@ def index():
                 # Store the top activity for conflict checking
                 top_activities.append(top_2_labels[0][0][1])
 
-                # # Count festivals
-                # for label, _ in top_2_labels:
-                #     festival_counts[label[0]] += 1
                 # Count festivals
                 top_1_label, top_1_prob = top_2_labels[0]  # Lấy top 1
                 festival_counts[top_1_label[0]] += 1  # Đếm top 1
@@ -216,18 +213,19 @@ def index():
                 if top_2_labels[1][1] > 0.1:
                     festival_counts[top_2_labels[1][0][0]] += 1
 
-                results.append((img_data, top_2_labels))
+                results_images.append((img_data, top_2_labels))
 
         # Check for conflicts between top activities of different images
         conflicts = detect_conflict(top_activities, conflict_pairs)
 
         if conflicts:
-            conflict_images = [(results[i][0], results[j][0]) for i, j in conflicts]
+            conflict_images = [(results_images[i][0], results_images[j][0]) for i, j in conflicts]
             return render_template(
                 'index.html', 
-                results=results, 
                 conflict_images=conflict_images, 
-                message="Các hình ảnh bạn cung cấp xuất hiện sự không đồng nhất, đảm bảo bạn đã tải lên những hình ảnh liên quan đến cùng một lễ hội"
+                message="Các hình ảnh bạn cung cấp xuất hiện sự không đồng nhất, đảm bảo bạn đã tải lên những hình ảnh liên quan đến cùng một lễ hội",
+                predicted = False,
+                server_return = True
             )
         else:
             most_likely_festival = determine_most_likely_festival(festival_counts, threshold=2)
@@ -235,15 +233,18 @@ def index():
                 festival_info = get_festival_info(most_likely_festival)
                 return render_template(
                     'index.html', 
-                    results=results, 
+                    results_images=results_images, 
                     message=f"{most_likely_festival}", festival_info=festival_info,
-                    predicted = True
+                    predicted = True,
+                    server_return = True
                 )
             else:
                 return render_template(
                     'index.html', 
-                    results=results, 
-                    message="Không thể kết luận các hình ảnh bạn cung cấp liên quan đến lễ hội nào vì kết quả dự đoán chưa chiếm số đông bởi bên nào"
+                    results_images=results_images, 
+                    message="Không thể kết luận các hình ảnh bạn cung cấp liên quan đến lễ hội nào vì kết quả dự đoán chưa chiếm số đông bởi bên nào",
+                    predicted = False,
+                    server_return = True
                 )
 
     return render_template('index.html')
@@ -279,13 +280,17 @@ def process_video_upload():
                 vtt_url=os.path.basename(vtt_file),  # Just the filename
                 video_uploaded=True,
                 message=f"{most_likely_festival}", festival_info=festival_info,
-                predicted = True
+                predicted = True,
+                server_return = True
             )
         
         else:
             return render_template(
                 'index.html', 
-                message="Không thể kết luận các Video bạn cung cấp liên quan đến lễ hội nào vì kết quả dự đoán chưa chiếm số đông bởi bên nào"
+                message="Không thể kết luận các Video bạn cung cấp liên quan đến lễ hội nào vì kết quả dự đoán chưa chiếm số đông bởi bên nào",
+                predicted = False,
+                server_return = True
+
             )
 
     return render_template('index.html', error="Đã xảy ra lỗi khi tải lên video.")
